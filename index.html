@@ -1,0 +1,292 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Containment Breach — Reactor World Model Demo</title>
+  <meta name="description" content="A first-person escape scenario inside a failing reactor control room, generated live by Reactor's LingBot World 2 world model." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;500;600;700&display=swap"
+    rel="stylesheet"
+  />
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <div id="stage">
+    <video id="world" autoplay muted playsinline></video>
+    <div id="video-scan"></div>
+    <div id="damage-vignette"></div>
+
+    <!-- Top bar -->
+    <header id="topbar">
+      <div class="brand">CONTAINMENT<span>BREACH</span><span class="v2">V2</span></div>
+      <div style="display:flex;align-items:center;gap:12px;">
+        <div id="session-badge" class="session-badge glass" style="display:none;">
+          <span class="session-label">SESSION</span>
+          <span id="session-id" class="session-id">—</span>
+          <button id="copy-session" class="copy-btn" title="Copy Session ID">📋</button>
+        </div>
+        <div id="status" class="status glass status--standby">
+          <span class="dot"></span>
+          <span id="status-text">STANDBY</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- Event ticker -->
+    <div id="event-ticker" class="glass"></div>
+
+    <!-- HUD (bottom-left) -->
+    <div id="hud" class="glass">
+      <div class="readout">
+        <span class="readout-label">Time Survived</span>
+        <span id="timer" class="readout-value">00:00</span>
+      </div>
+      <div class="readout">
+        <span class="readout-label">Containment Integrity</span>
+        <div class="integrity-bar"><div id="integrity-fill" class="integrity-fill"></div></div>
+        <span id="integrity-value" class="readout-value" style="font-size:16px;">100%</span>
+      </div>
+      <div class="readout">
+        <span class="readout-label">Events Triggered</span>
+        <span id="event-count" class="readout-value" style="font-size:16px;">0 / 8</span>
+      </div>
+      <div class="hud-stats">
+        <div class="hud-stat">
+          <span class="readout-label">Chunks</span>
+          <span id="chunk-idx" class="hud-stat-val">—</span>
+        </div>
+        <div class="hud-stat">
+          <span class="readout-label">Frames</span>
+          <span id="frame-count" class="hud-stat-val">0</span>
+        </div>
+        <div class="hud-stat">
+          <span class="readout-label">Attn</span>
+          <span id="attn-badge" class="hud-stat-val">auto</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Control strip (center-bottom) -->
+    <div id="control-strip" class="glass">
+      <div id="controls-hint">
+        <span class="key" data-key="w">W</span>
+        <span class="key" data-key="a">A</span>
+        <span class="key" data-key="s">S</span>
+        <span class="key" data-key="d">D</span>
+        <span style="color:var(--text-muted);margin:0 4px;">·</span>
+        <span class="key" data-key="ArrowLeft">←</span>
+        <span class="key" data-key="ArrowUp">↑</span>
+        <span class="key" data-key="ArrowDown">↓</span>
+        <span class="key" data-key="ArrowRight">→</span>
+      </div>
+      <div class="ctrl-divider"></div>
+      <button id="pause-btn" class="ctrl-btn" disabled>⏸ Pause</button>
+      <button id="diag-toggle" class="ctrl-btn">◈ Diag</button>
+      <label class="ctrl-btn" id="upload-label" style="cursor:pointer;">
+        ⬆ Image
+        <input type="file" id="upload-area" accept="image/*" style="display:none;" />
+      </label>
+    </div>
+
+    <!-- Event Deck (right side) -->
+    <div id="event-deck">
+      <div id="event-deck-label">⚡ Event Deck</div>
+      <button class="event-btn glass" data-event="alarm" data-cost="10" data-tier="1" disabled>
+        <span class="event-icon">🚨</span>
+        <span>Alarm Klaxons</span>
+        <span class="event-cost">-10%</span>
+      </button>
+      <button class="event-btn glass" data-event="smoke" data-cost="10" data-tier="1" disabled>
+        <span class="event-icon">💨</span>
+        <span>Smoke Fill</span>
+        <span class="event-cost">-10%</span>
+      </button>
+      <button class="event-btn glass" data-event="sparks" data-cost="10" data-tier="2" disabled>
+        <span class="event-icon">⚡</span>
+        <span>Electrical Sparks</span>
+        <span class="event-cost">-10%</span>
+      </button>
+      <button class="event-btn glass" data-event="radiation" data-cost="15" data-tier="2" disabled>
+        <span class="event-icon">☢️</span>
+        <span>Radiation Surge</span>
+        <span class="event-cost">-15%</span>
+      </button>
+      <button class="event-btn glass" data-event="leak" data-cost="15" data-tier="3" disabled>
+        <span class="event-icon">🌊</span>
+        <span>Coolant Leak</span>
+        <span class="event-cost">-15%</span>
+      </button>
+      <button class="event-btn glass" data-event="power" data-cost="15" data-tier="3" disabled>
+        <span class="event-icon">🔌</span>
+        <span>Power Failure</span>
+        <span class="event-cost">-15%</span>
+      </button>
+      <button class="event-btn glass" data-event="collapse" data-cost="20" data-tier="4" disabled>
+        <span class="event-icon">💥</span>
+        <span>Structural Collapse</span>
+        <span class="event-cost">-20%</span>
+      </button>
+      <button class="event-btn glass" data-event="meltdown" data-cost="25" data-tier="4" disabled>
+        <span class="event-icon">☠️</span>
+        <span>Core Meltdown</span>
+        <span class="event-cost">-25%</span>
+      </button>
+    </div>
+
+    <!-- Diagnostics panel -->
+    <div id="diagnostics" class="glass">
+      <div id="diag-title">
+        <span>◈ Live Diagnostics</span>
+        <button id="diag-close">✕</button>
+      </div>
+      <div class="diag-row">
+        <span class="label">Connection</span>
+        <span id="diag-conn" class="value">—</span>
+      </div>
+      <div class="diag-row">
+        <span class="label">Model</span>
+        <span class="value" style="color:var(--cyan);">LingBot World 2</span>
+      </div>
+      <div class="diag-row">
+        <span class="label">Has Image</span>
+        <span id="diag-image" class="value">—</span>
+      </div>
+      <div class="diag-row">
+        <span class="label">Has Prompt</span>
+        <span id="diag-prompt" class="value">—</span>
+      </div>
+      <div class="diag-row">
+        <span class="label">Generating</span>
+        <span id="diag-gen" class="value">—</span>
+      </div>
+      <div class="diag-row">
+        <span class="label">Paused</span>
+        <span id="diag-paused" class="value">—</span>
+      </div>
+      <div class="diag-row">
+        <span class="label">Chunks</span>
+        <span id="diag-chunks" class="value">0</span>
+      </div>
+      <div class="diag-row">
+        <span class="label">Frames</span>
+        <span id="diag-frames" class="value">0</span>
+      </div>
+      <div class="diag-row">
+        <span class="label">Active Events</span>
+        <span id="diag-events" class="value">0</span>
+      </div>
+      <div class="diag-row">
+        <span class="label">KV Cache</span>
+        <span id="diag-kv" class="value">auto</span>
+      </div>
+      <div class="diag-row">
+        <span class="label">Attn Window</span>
+        <span id="diag-attn" class="value">auto</span>
+      </div>
+      <div class="diag-row">
+        <span class="label">Rotation Speed</span>
+        <span id="diag-rot" class="value">5.0°</span>
+      </div>
+      <div class="diag-row">
+        <span class="label">Seed</span>
+        <span id="diag-seed" class="value">random</span>
+      </div>
+
+      <!-- Backend knobs -->
+      <div style="font-family:var(--font-mono);font-size:9px;letter-spacing:0.14em;text-transform:uppercase;color:var(--cyan);margin-top:10px;">Model Knobs</div>
+      <div class="diag-knobs">
+        <div class="knob-group">
+          <span class="knob-label">Attn Window</span>
+          <div class="knob-btns">
+            <button class="knob-btn active" data-knob="attn" data-val="auto">Auto</button>
+            <button class="knob-btn" data-knob="attn" data-val="small">Small</button>
+            <button class="knob-btn" data-knob="attn" data-val="large">Large</button>
+          </div>
+        </div>
+        <div class="knob-group">
+          <span class="knob-label">KV Cache</span>
+          <div class="knob-btns">
+            <button class="knob-btn active" data-knob="kv" data-val="auto">Auto</button>
+            <button class="knob-btn" data-knob="kv" data-val="manual">Manual</button>
+            <button class="knob-btn" data-knob="kv" data-val="off">Off</button>
+          </div>
+        </div>
+        <div class="knob-group">
+          <span class="knob-label">Rotation °/chunk</span>
+          <div class="knob-btns">
+            <button class="knob-btn" data-knob="rot" data-val="3">3°</button>
+            <button class="knob-btn active" data-knob="rot" data-val="5">5°</button>
+            <button class="knob-btn" data-knob="rot" data-val="10">10°</button>
+            <button class="knob-btn" data-knob="rot" data-val="15">15°</button>
+          </div>
+        </div>
+        <button id="kv-flush-btn" class="knob-btn" style="width:100%;margin-top:4px;color:var(--amber);">⚡ Force KV Cache Reset</button>
+      </div>
+
+      <!-- Active prompt display -->
+      <div style="font-family:var(--font-mono);font-size:9px;letter-spacing:0.14em;text-transform:uppercase;color:var(--cyan);margin-top:10px;">Active Prompt</div>
+      <div id="active-prompt" class="active-prompt">—</div>
+
+      <!-- Event Log -->
+      <div style="font-family:var(--font-mono);font-size:9px;letter-spacing:0.14em;text-transform:uppercase;color:var(--text-muted);margin-top:8px;">Event Log</div>
+      <div id="event-log"></div>
+    </div>
+
+    <!-- Start overlay -->
+    <div id="start-overlay" class="overlay">
+      <div class="overlay-panel">
+        <div class="overlay-eyebrow">Reactor World Model Demo</div>
+        <h1>Containment Breach</h1>
+        <p>
+          You're in a failing reactor control room - generated live and
+          rendered frame by frame as you move through it. Navigate with WASD,
+          look around with arrow keys. Trigger 8 escalating failures from the
+          Event Deck. Each failure degrades containment integrity.
+          Survive as long as you can.
+        </p>
+        <div class="start-options">
+          <div class="start-option">
+            <span class="knob-label">Seed</span>
+            <input type="number" id="seed-input" class="seed-input" placeholder="Random" min="0" max="999999" />
+          </div>
+        </div>
+        <p class="subtitle">Powered by LingBot World 2 · Reactor SDK</p>
+        <button id="start-btn" class="primary-btn">Initiate Sequence</button>
+        <p id="start-error" class="error-text"></p>
+      </div>
+    </div>
+
+    <!-- End overlay -->
+    <div id="end-overlay" class="overlay hidden">
+      <div class="overlay-panel">
+        <div class="overlay-eyebrow overlay-eyebrow--critical">⚠ Containment Lost</div>
+        <h1>Reactor Breach</h1>
+        <div class="end-score">
+          <div class="score-block">
+            <div id="end-time" class="score-val">00:00</div>
+            <div class="score-lbl">Time Survived</div>
+          </div>
+          <div class="score-block">
+            <div id="end-events" class="score-val">0</div>
+            <div class="score-lbl">Events</div>
+          </div>
+          <div class="score-block">
+            <div id="end-chunks" class="score-val">0</div>
+            <div class="score-lbl">Chunks</div>
+          </div>
+          <div class="score-block">
+            <div id="end-frames" class="score-val">0</div>
+            <div class="score-lbl">Frames</div>
+          </div>
+        </div>
+        <button id="restart-btn" class="primary-btn">Reset Reactor</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="/main.js"></script>
+</body>
+</html>

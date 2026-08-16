@@ -1,0 +1,5 @@
+Drop your reference image here and rename it exactly: seed.jpg
+
+Any interior/corridor/room photo works — it just anchors the visual
+identity of the world before LingBot World 2 starts generating.
+Delete this file once seed.jpg is in place.
